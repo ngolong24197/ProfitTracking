@@ -6,12 +6,16 @@ import datetime
 # --- Constants ---
 DATA_FILE = "room_data.csv"
 PAYMENTS_FILE = "payments_data.csv"
+DEFAULT_DUE_DAY = 25
 
 # --- Functions ---
 def load_data():
     if os.path.exists(DATA_FILE):
         return pd.read_csv(DATA_FILE, parse_dates=["Start Date", "End Date", "Due Date"])
     else:
+        today = pd.Timestamp.today()
+        default_due_date = today.replace(day=DEFAULT_DUE_DAY)
+
         df = pd.DataFrame({
             "Room": [f"Room {i+1}" for i in range(5)],
             "Tenant Name": [""] * 5,
@@ -19,9 +23,9 @@ def load_data():
             "Rent Price": [0] * 5,
             "Amount Paid": [0] * 5,
             "Contract Term": ["1 month"] * 5,
-            "Start Date": [pd.Timestamp.today()] * 5,
-            "End Date": [pd.Timestamp.today()] * 5,
-            "Due Date": [pd.Timestamp.today()] * 5,
+            "Start Date": [today] * 5,
+            "End Date": [today] * 5,
+            "Due Date": [default_due_date] * 5,  # Set default due date to 25th of current month
             "Notes": [""] * 5,
         })
         df.to_csv(DATA_FILE, index=False)
@@ -97,7 +101,9 @@ with tabs[0]:
         )
         start_date = st.date_input("Start Date", value=pd.to_datetime(room_data["Start Date"]).date())
         end_date = st.date_input("End Date", value=pd.to_datetime(room_data["End Date"]).date())
-        due_date = st.date_input("Due Date", value=pd.to_datetime(room_data["Due Date"]).date())
+
+        # Replace date_input for Due Date with number_input
+        due_day = st.number_input("Due Day (1-31)", min_value=1, max_value=31, value=DEFAULT_DUE_DAY)
         notes = st.text_area("Notes", value=room_data["Notes"])
 
         submitted = st.form_submit_button("💾 Save Changes")
@@ -111,7 +117,11 @@ with tabs[0]:
         df.at[idx, "Contract Term"] = contract_term
         df.at[idx, "Start Date"] = pd.Timestamp(start_date)
         df.at[idx, "End Date"] = pd.Timestamp(end_date)
-        df.at[idx, "Due Date"] = pd.Timestamp(due_date)
+
+        # Update Due Date based on selected day
+        new_due_date = pd.Timestamp(start_date).replace(day=due_day)
+        df.at[idx, "Due Date"] = new_due_date
+
         df.at[idx, "Notes"] = notes
 
         save_data(df)
